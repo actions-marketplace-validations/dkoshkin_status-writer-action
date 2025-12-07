@@ -20,11 +20,11 @@ jobs:
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
     steps:
-      - uses: google-github-actions/release-please-action@v3.7
+      - uses: google-github-actions/release-please-action@v4.1
         id: release-please
         with:
           release-type: go
-          package-name: exec-assistant
+          package-name: status-writer-action
           pull-request-title-pattern: "build${scope}: release${component} ${version}"
           changelog-notes-type: github
 

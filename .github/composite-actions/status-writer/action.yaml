@@ -22,15 +22,20 @@ inputs:
     description: 'The InfluxDB bucket to use for pushing metrics'
     required: false
 
+  # Google Sheets specific inputs
+  googlesheets_spreadsheet_id:
+    description: 'The ID of the Google Sheets spreadsheet to use for pushing metrics'
+    required: false
+
   repository:
     description: 'The repository name'
-    required: true
+    required: false
   actor:
     description: 'The actor who triggered the action'
-    required: true
+    required: false
   status:
     description: 'The status of the action, valid values are: success, failure, cancelled or skipped'
-    required: true
+    required: false
   tags:
     description: 'A comma separated list of key=value pairs to be added to the metric'
     required: false
@@ -39,14 +44,26 @@ runs:
   using: "composite"
   steps:
     # copy the binary to where the GitHub Action expects it
-    - name: Copy binary to bin/
+    - name: Copy Linux binary to bin/
       shell: bash
+      if: ${{ runner.os == 'Linux' }}
       run: |
         if [ ! -f bin/status-writer-action_linux_amd64 ]
         then
           mkdir -p bin
           cp dist/status-writer-action_linux_amd64_v1/status-writer-action bin
           mv bin/status-writer-action bin/status-writer-action_linux_amd64
+        fi
+
+    - name: Copy Darwin binary to bin/
+      shell: bash
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        if [ ! -f bin/status-writer-action_darwin_amd64 ]
+        then
+          mkdir -p bin
+          cp dist/status-writer-action_darwin_amd64_v1/status-writer-action bin
+          mv bin/status-writer-action bin/status-writer-action_darwin_amd64
         fi
 
     - name: Push job status and other metadata to a remote backend
@@ -59,8 +76,9 @@ runs:
         influxdb_url: "${{ inputs.influxdb_url }}"
         influxdb_org: "${{ inputs.influxdb_org }}"
         influxdb_bucket: "${{ inputs.influxdb_bucket }}"
-        # set the repository, status and additional metadata tags
-        repository: "${{ inputs.repository }}"
-        actor: "${{ inputs.actor }}"
-        status: "${{ inputs.status }}"
-        tags: "${{ inputs.tags }}"
+        # set Google Sheets details
+        googlesheets_spreadsheet_id: "${{ inputs.googlesheets_spreadsheet_id }}"
+        repository: "${{ github.repository }}"
+        actor: "${{ github.actor }}"
+        status: "${{ job.status }}"
+        tags: "workflow=${{ github.workflow }},job=${{ github.job }},ref=${{ github.ref_name }},run_number=${{ github.run_number }},run_id=${{ github.run_id }}"

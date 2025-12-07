@@ -20,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install tools via asdf
-        uses: asdf-vm/actions/install@v2.1.0
+        uses: asdf-vm/actions/install@v3.0.2
         with:
           asdf_branch: v0.11.2
 
@@ -32,7 +32,7 @@ jobs:
 
       - name: Annotate tests
         if: always()
-        uses: guyarb/golang-test-annotations@v0.6.0
+        uses: guyarb/golang-test-annotations@v0.8.0
         with:
           test-results: test.json
 
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Gather tool versions
         uses: endorama/asdf-parse-tool-versions@v1
@@ -64,23 +64,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Gather tool versions
         uses: endorama/asdf-parse-tool-versions@v1
         id: versions
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(steps.versions.outputs.tools).golang }}
           check-latest: false
           cache: true
 
-      - uses: mfinelli/setup-shfmt@v2
+      - uses: mfinelli/setup-shfmt@v3
         with:
           shfmt-version: ${{ fromJson(steps.versions.outputs.tools).shfmt }}
 
-      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit/action@v3.0.1
         with:
           extra_args: --all-files --show-diff-on-failure
         env:
@@ -90,10 +90,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install tools via asdf
-        uses: asdf-vm/actions/install@v2.1.0
+        uses: asdf-vm/actions/install@v3.0.2
         with:
           asdf_branch: v0.11.2
 
@@ -103,6 +103,20 @@ jobs:
       - name: Run binary
         run: |
           ./dist/status-writer-action_linux_amd64_v1/status-writer-action --version
+
+  run-with-influxdb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install tools via asdf
+        uses: asdf-vm/actions/install@v3.0.2
+        with:
+          asdf_branch: v0.11.2
+
+      - name: Build
+        run: make build-snapshot
 
       - name: Run status-writer-action with InfluxDB
         uses: ./.github/composite-actions/status-writer
@@ -116,8 +130,35 @@ jobs:
           influxdb_url: "${{ secrets.INFLUXDB_URL }}"
           influxdb_org: "${{ secrets.INFLUXDB_ORG }}"
           influxdb_bucket: "${{ secrets.INFLUXDB_BUCKET }}"
-          # set the status and additional metadata tags
-          repository: "${{ github.repository }}"
-          actor: "${{ github.actor }}"
-          status: "${{ job.status }}"
-          tags: "workflow=${{ github.workflow }},job=${{ github.job }},ref=${{ github.ref_name }},run_number=${{ github.run_number }},run_id=${{ github.run_id }}"
+
+  run-with-googlesheets:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: client_secret.json
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install tools via asdf
+        uses: asdf-vm/actions/install@v3.0.2
+        with:
+          asdf_branch: v0.11.2
+
+      - name: Build
+        run: make build-snapshot
+
+      - name: Write Google Cloud credentials to file
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "${{ env.GOOGLE_APPLICATION_CREDENTIALS }}"
+          json: "${{ secrets.GOOGLE_CREDENTIALS }}"
+
+      - name: Run status-writer-action with Google Sheets
+        uses: ./.github/composite-actions/status-writer
+        # always run this step, even if previous steps fail
+        if: always()
+        with:
+          # select the backend to use
+          backend: "googlesheets"
+          # set Google Sheets details
+          googlesheets_spreadsheet_id: "${{ secrets.GOOGLESHEETS_SPREADSHEET_ID }}"
