@@ -3,10 +3,10 @@
 
 module github.com/dkoshkin/status-writer-action
 
-go 1.20
+go 1.21
 
 require (
-	github.com/influxdata/influxdb-client-go/v2 v2.13.0
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/sethvargo/go-githubactions v1.2.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/oauth2 v0.19.0
